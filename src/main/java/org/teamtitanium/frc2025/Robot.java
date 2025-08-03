@@ -164,6 +164,7 @@ public class Robot extends LoggedRobot {
 
     swerveDriveSimulation.setSimulationWorldPose(new Pose2d(3, 3, new Rotation2d()));
     SimulatedArena.getInstance().resetFieldForAuto();
+    swerve.setPose(new Pose2d(3, 3, new Rotation2d()));
   }
 
   @Override

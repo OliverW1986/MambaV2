@@ -62,7 +62,7 @@ public class Swerve extends SubsystemBase {
           .withSwerveModule(
               new SwerveModuleSimulationConfig(
                   DCMotor.getKrakenX60(1),
-                  DCMotor.getKrakenX60(1),
+                  DCMotor.getFalcon500(1),
                   TunerConstants.FrontLeft.DriveMotorGearRatio,
                   TunerConstants.FrontLeft.SteerMotorGearRatio,
                   Volts.of(TunerConstants.FrontLeft.DriveFrictionVoltage),
