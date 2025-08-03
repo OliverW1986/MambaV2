@@ -7,7 +7,7 @@ import edu.wpi.first.wpilibj.RobotBase;
 public class Constants {
   public static final double loopPeriodSecs = 0.02;
   public static final boolean tuningMode = false;
-  private static RobotType robotType = RobotType.COMPBOT;
+  private static RobotType robotType = RobotType.SIMBOT;
 
   @SuppressWarnings("resource")
   public static RobotType getRobot() {
@@ -36,5 +36,13 @@ public class Constants {
     SIMBOT
   }
 
-  public static class ChechDeploy {}
+  public record Gains(double kP, double kI, double kD, double kS, double kV, double kG, double kA) {
+    public Gains(double kP, double kI, double kD) {
+      this(kP, kI, kD, 0.0, 0.0, 0.0, 0.0);
+    }
+
+    public Gains(double kP, double kI, double kD, double kS, double kV, double kG) {
+      this(kP, kI, kD, kS, kV, kG, 0.0);
+    }
+  }
 }

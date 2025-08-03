@@ -6,12 +6,17 @@ package org.teamtitanium.frc2025;
 
 import com.ctre.phoenix6.SignalLogger;
 import edu.wpi.first.hal.AllianceStationID;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.simulation.DriverStationSim;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import java.util.HashMap;
 import java.util.function.BiConsumer;
+import org.ironmaple.simulation.SimulatedArena;
+import org.ironmaple.simulation.drivesims.SwerveDriveSimulation;
 import org.littletonrobotics.junction.LogFileUtil;
 import org.littletonrobotics.junction.LoggedRobot;
 import org.littletonrobotics.junction.Logger;
@@ -19,9 +24,23 @@ import org.littletonrobotics.junction.networktables.NT4Publisher;
 import org.littletonrobotics.junction.wpilog.WPILOGReader;
 import org.littletonrobotics.junction.wpilog.WPILOGWriter;
 import org.teamtitanium.frc2025.Constants.RobotType;
+import org.teamtitanium.frc2025.commands.DriveCommands;
+import org.teamtitanium.frc2025.subsystems.swerve.GyroIO;
+import org.teamtitanium.frc2025.subsystems.swerve.GyroIOPigeon2;
+import org.teamtitanium.frc2025.subsystems.swerve.GyroIOSim;
+import org.teamtitanium.frc2025.subsystems.swerve.Swerve;
+import org.teamtitanium.frc2025.subsystems.swerve.SwerveModuleIO;
+import org.teamtitanium.frc2025.subsystems.swerve.SwerveModuleIOTalonFXReal;
+import org.teamtitanium.frc2025.subsystems.swerve.SwerveModuleIOTalonFXSim;
 
 public class Robot extends LoggedRobot {
   private Command m_autonomousCommand;
+
+  private final Swerve swerve;
+
+  private SwerveDriveSimulation swerveDriveSimulation = null;
+
+  private final CommandXboxController driver = new CommandXboxController(0);
 
   public Robot() {
     Logger.recordMetadata("ProjectName", BuildConstants.MAVEN_NAME);
@@ -86,6 +105,50 @@ public class Robot extends LoggedRobot {
       DriverStationSim.setAllianceStationId(AllianceStationID.Blue1);
       DriverStationSim.notifyNewData();
     }
+
+    switch (Constants.getMode()) {
+      case REAL:
+        swerve =
+            new Swerve(
+                new GyroIOPigeon2(),
+                new SwerveModuleIOTalonFXReal(TunerConstants.FrontLeft),
+                new SwerveModuleIOTalonFXReal(TunerConstants.FrontRight),
+                new SwerveModuleIOTalonFXReal(TunerConstants.BackLeft),
+                new SwerveModuleIOTalonFXReal(TunerConstants.BackRight),
+                (pose) -> {});
+        break;
+      case SIM:
+        swerveDriveSimulation =
+            new SwerveDriveSimulation(Swerve.mapleSimConfig, new Pose2d(3, 3, new Rotation2d()));
+        SimulatedArena.getInstance().addDriveTrainSimulation(swerveDriveSimulation);
+        swerve =
+            new Swerve(
+                new GyroIOSim(swerveDriveSimulation.getGyroSimulation()),
+                new SwerveModuleIOTalonFXSim(
+                    TunerConstants.FrontLeft, swerveDriveSimulation.getModules()[0]),
+                new SwerveModuleIOTalonFXSim(
+                    TunerConstants.FrontRight, swerveDriveSimulation.getModules()[1]),
+                new SwerveModuleIOTalonFXSim(
+                    TunerConstants.BackLeft, swerveDriveSimulation.getModules()[2]),
+                new SwerveModuleIOTalonFXSim(
+                    TunerConstants.BackRight, swerveDriveSimulation.getModules()[3]),
+                swerveDriveSimulation::setSimulationWorldPose);
+        break;
+      default:
+        swerve =
+            new Swerve(
+                new GyroIO() {},
+                new SwerveModuleIO() {},
+                new SwerveModuleIO() {},
+                new SwerveModuleIO() {},
+                new SwerveModuleIO() {},
+                (pose) -> {});
+        break;
+    }
+
+    swerve.setDefaultCommand(
+        DriveCommands.joystickDrive(
+            swerve, () -> -driver.getLeftY(), () -> -driver.getLeftX(), () -> -driver.getRightX()));
   }
 
   @Override
@@ -94,7 +157,14 @@ public class Robot extends LoggedRobot {
   }
 
   @Override
-  public void disabledInit() {}
+  public void disabledInit() {
+    if (Constants.getMode() != Constants.Mode.SIM) {
+      return;
+    }
+
+    swerveDriveSimulation.setSimulationWorldPose(new Pose2d(3, 3, new Rotation2d()));
+    SimulatedArena.getInstance().resetFieldForAuto();
+  }
 
   @Override
   public void disabledPeriodic() {}
@@ -138,4 +208,19 @@ public class Robot extends LoggedRobot {
 
   @Override
   public void testExit() {}
+
+  @Override
+  public void simulationPeriodic() {
+    if (Constants.getMode() != Constants.Mode.SIM) {
+      return;
+    }
+
+    SimulatedArena.getInstance().simulationPeriodic();
+    Logger.recordOutput(
+        "FieldSimulation/RobotPosition", swerveDriveSimulation.getSimulatedDriveTrainPose());
+    Logger.recordOutput(
+        "FieldSimulation/Coral", SimulatedArena.getInstance().getGamePiecesArrayByType("Coral"));
+    Logger.recordOutput(
+        "FieldSimulation/Algae", SimulatedArena.getInstance().getGamePiecesArrayByType("Algae"));
+  }
 }
