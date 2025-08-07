@@ -7,6 +7,7 @@ import edu.wpi.first.wpilibj.RobotBase;
 public class Constants {
   public static final double loopPeriodSecs = 0.02;
   public static final boolean tuningMode = false;
+  public static final boolean disableHAL = false;
   private static RobotType robotType = RobotType.SIMBOT;
 
   @SuppressWarnings("resource")
@@ -43,6 +44,12 @@ public class Constants {
 
     public Gains(double kP, double kI, double kD, double kS, double kV, double kG) {
       this(kP, kI, kD, kS, kV, kG, 0.0);
+    }
+  }
+
+  public record Constraints(double maxVelocity, double maxAcceleration, double jerk) {
+    public Constraints(double maxVelocity, double maxAcceleration) {
+      this(maxVelocity, maxAcceleration, 0.0);
     }
   }
 }
