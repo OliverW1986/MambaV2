@@ -2,17 +2,16 @@ package org.teamtitanium.frc2025.subsystems.elevator;
 
 import static edu.wpi.first.units.Units.Inches;
 
+import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.units.measure.Distance;
 import org.teamtitanium.frc2025.Constants;
 import org.teamtitanium.frc2025.Constants.Constraints;
 import org.teamtitanium.frc2025.Constants.Gains;
 import org.teamtitanium.frc2025.utils.LoggedTunableNumber;
 
-import edu.wpi.first.math.geometry.Pose3d;
-import edu.wpi.first.math.geometry.Rotation3d;
-import edu.wpi.first.units.measure.Distance;
-
 public class ElevatorConstants {
-    public static final LoggedTunableNumber TUNABLE_ELEVATOR_HEIGHT =
+  public static final LoggedTunableNumber TUNABLE_ELEVATOR_HEIGHT =
       new LoggedTunableNumber("Elevator/TunableHeight", 0.0);
   public static final LoggedTunableNumber TUNABLE_ELEVATOR_HEIGHT_2 =
       new LoggedTunableNumber("Elevator/TunableHeight2", 0.0);

@@ -5,12 +5,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.DoubleSupplier;
-
 import org.littletonrobotics.junction.networktables.LoggedNetworkNumber;
 import org.teamtitanium.frc2025.Constants;
 
 public class LoggedTunableNumber implements DoubleSupplier {
-    private static final String tableKey = "/Tuning";
+  private static final String tableKey = "/Tuning";
 
   private final String key;
   private boolean hasDefault = false;

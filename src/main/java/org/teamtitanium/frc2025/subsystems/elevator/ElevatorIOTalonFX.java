@@ -2,13 +2,16 @@ package org.teamtitanium.frc2025.subsystems.elevator;
 
 import java.util.List;
 
+import org.teamtitanium.frc2025.Constants.Constraints;
+import org.teamtitanium.frc2025.Constants.Gains;
 import org.teamtitanium.frc2025.utils.PhoenixUtil;
 
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.Follower;
-import com.ctre.phoenix6.controls.MotionMagicVoltage;
+import com.ctre.phoenix6.controls.MotionMagicTorqueCurrentFOC;
+import com.ctre.phoenix6.controls.TorqueCurrentFOC;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
@@ -25,21 +28,22 @@ import static edu.wpi.first.units.Units.RotationsPerSecond;
 import static org.teamtitanium.frc2025.subsystems.elevator.ElevatorConstants.*;
 
 public class ElevatorIOTalonFX implements ElevatorIO {
-    private final TalonFX leaderMotor, followerMotor;
+    protected final TalonFX leaderMotor, followerMotor;
 
     private final TalonFXConfiguration config = new TalonFXConfiguration();
 
-    private final MotionMagicVoltage motionMagicVoltage = new MotionMagicVoltage(0.0);
+    private final MotionMagicTorqueCurrentFOC motionmagicTorqueCurrentFOC = new MotionMagicTorqueCurrentFOC(0.0);
+    private final TorqueCurrentFOC torqueCurrentFOC = new TorqueCurrentFOC(0.0);
     private final VoltageOut voltageOut = new VoltageOut(0.0);
 
-    private final StatusSignal<Double> elevatorSetpoint;
+    protected final StatusSignal<Double> elevatorSetpoint;
 
-    private final StatusSignal<Angle> elevatorPosition;
-    private final StatusSignal<AngularVelocity> elevatorVelocity;
-    private final List<StatusSignal<Voltage>> appliedVolts;
-    private final List<StatusSignal<Current>> supplyCurrentAmps;
-    private final List<StatusSignal<Current>> torqueCurrentAmps;
-    private final List<StatusSignal<Temperature>> tempCelsius;
+    protected final StatusSignal<Angle> elevatorPosition;
+    protected final StatusSignal<AngularVelocity> elevatorVelocity;
+    protected final List<StatusSignal<Voltage>> appliedVolts;
+    protected final List<StatusSignal<Current>> supplyCurrentAmps;
+    protected final List<StatusSignal<Current>> torqueCurrentAmps;
+    protected final List<StatusSignal<Temperature>> tempCelsius;
 
     public ElevatorIOTalonFX() {
         leaderMotor = new TalonFX(LEADER_MOTOR_ID, ELEVATOR_CANBUS);
@@ -58,8 +62,6 @@ public class ElevatorIOTalonFX implements ElevatorIO {
 
         config.CurrentLimits.StatorCurrentLimit = STATOR_CURRENT_LIMIT;
         config.CurrentLimits.StatorCurrentLimitEnable = true;
-
-        config.ClosedLoopRamps.VoltageClosedLoopRampPeriod = 0.1;
 
         config.MotorOutput.Inverted = ELEVATOR_INVERTED ? InvertedValue.Clockwise_Positive
                 : InvertedValue.CounterClockwise_Positive;
@@ -127,5 +129,53 @@ public class ElevatorIOTalonFX implements ElevatorIO {
         inputs.torqueCurrentAmps =
             torqueCurrentAmps.stream().mapToDouble(StatusSignal::getValueAsDouble).toArray();
         inputs.tempCelsius = tempCelsius.stream().mapToDouble(StatusSignal::getValueAsDouble).toArray();
+    }
+
+    @Override
+    public void setPosition(double positionRots) {
+        leaderMotor.setControl(motionmagicTorqueCurrentFOC.withPosition(positionRots));
+    }
+
+    @Override
+    public void setTorqueCurrent(double current) {
+        leaderMotor.setControl(torqueCurrentFOC.withOutput(current));
+    }
+
+    @Override
+    public void setVoltage(double voltage) {
+        leaderMotor.setControl(voltageOut.withOutput(voltage));
+    }
+
+    @Override
+    public void setGains(Gains gains) {
+        config.Slot0.kP = gains.kP();
+        config.Slot0.kI = gains.kI();
+        config.Slot0.kD = gains.kD();
+        config.Slot0.kS = gains.kS();
+        config.Slot0.kV = gains.kV();
+        config.Slot0.kG = gains.kG();
+        config.Slot0.kA = gains.kA();
+        PhoenixUtil.tryUntilOk(5, () -> leaderMotor.getConfigurator().apply(config, 0.25));
+        PhoenixUtil.tryUntilOk(5, () -> followerMotor.getConfigurator().apply(config, 0.25));
+    }
+
+    @Override
+    public void setConstraints(Constraints constraints) {
+        config.MotionMagic.MotionMagicCruiseVelocity = constraints.maxVelocity();
+        config.MotionMagic.MotionMagicAcceleration = constraints.maxAcceleration();
+        PhoenixUtil.tryUntilOk(5, () -> leaderMotor.getConfigurator().apply(config, 0.25));
+        PhoenixUtil.tryUntilOk(5, () -> followerMotor.getConfigurator().apply(config, 0.25));
+    }
+
+    @Override
+    public void setBrakeMode(boolean enabled) {
+        config.MotorOutput.NeutralMode = enabled ? NeutralModeValue.Brake : NeutralModeValue.Coast;
+        PhoenixUtil.tryUntilOk(5, () -> leaderMotor.getConfigurator().apply(config, 0.25));
+        PhoenixUtil.tryUntilOk(5, () -> followerMotor.getConfigurator().apply(config, 0.25));
+    }
+
+    @Override
+    public void setMotorPosition(double positionRots) {
+        leaderMotor.setPosition(positionRots);
     }
 }
